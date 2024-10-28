@@ -1,8 +1,6 @@
 import pygame
-from pygame.locals import *
 import cv2
-from segmentation import detectar_objeto_verde  # Importando a função de segmentação
-import numpy as np
+from segmentation import detectar_objeto, create_trackbar  # Importando a função de segmentação
 import threading
 
 pygame.init()
@@ -46,24 +44,38 @@ def draw_text(text, font, text_col, x, y):
 def capturar_video():
     global centro_objeto, video_running
     cap = cv2.VideoCapture(0)
+
+    # Inicializar janela de jogo e trackbars
+    window_name = "Imagem Original"
+    cv2.namedWindow(window_name)
+    create_trackbar(window_name)
+
     while video_running:
         ret, frame = cap.read()
         if not ret:
             break
 
         # Detectar o centro e a máscara
-        centro, mask = detectar_objeto_verde(frame)
+        centro, mask = detectar_objeto(frame)
+
         if centro is not None:
             centro_objeto = centro
 
-        # Exibir as janelas de câmera e máscara segmentada
-        cv2.imshow("Imagem Original", frame)  # Imagem da câmera
-        cv2.imshow("Mascara Verde", mask)  # Mascara segmentada
+        # Dar flip ao camera feed para dar match do movimento do jogador
+        frame = cv2.flip(frame, 1)
+
+        cv2.imshow(window_name, frame)
+
+        # Dar flip ao mask feed para dar match do movimento do jogador
+        mask = cv2.flip(mask, 1)
+
+        cv2.imshow("Mascara", mask)  # Mascara segmentada
 
         # Controla para que a janela feche corretamente
         if cv2.waitKey(1) & 0xFF == ord('q'):
             video_running = False
             break
+
     cap.release()
     cv2.destroyAllWindows()
 
