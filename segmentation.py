@@ -1,32 +1,12 @@
 import cv2
 import numpy as np
 
-# Função pra criar as trackbars
-def create_trackbar(window_name):
-    cv2.createTrackbar('H Min', window_name, 44, 180, lambda x: None)
-    cv2.createTrackbar('H Max', window_name, 73, 180, lambda x: None)
-    cv2.createTrackbar('S Min', window_name, 0, 255, lambda x: None)
-    cv2.createTrackbar('S Max', window_name, 255, 255, lambda x: None)
-    cv2.createTrackbar('V Min', window_name, 158, 255, lambda x: None)
-    cv2.createTrackbar('V Max', window_name, 255, 255, lambda x: None)
-
-# Função pra detetar o objeto utilizando os valores HSV das trackbars
+# Função para detectar o centro de massa do objeto verde e retornar a máscara
 def detectar_objeto(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-    # Get dos valores das trackbars
-    h_min = cv2.getTrackbarPos('H Min', 'Imagem Original')
-    h_max = cv2.getTrackbarPos('H Max', 'Imagem Original')
-    s_min = cv2.getTrackbarPos('S Min', 'Imagem Original')
-    s_max = cv2.getTrackbarPos('S Max', 'Imagem Original')
-    v_min = cv2.getTrackbarPos('V Min', 'Imagem Original')
-    v_max = cv2.getTrackbarPos('V Max', 'Imagem Original')
-
-    # Criar mascara usando os valores da trackbar
-    lower_bound = np.array([h_min, s_min, v_min])
-    upper_bound = np.array([h_max, s_max, v_max])
-    mask = cv2.inRange(hsv, lower_bound, upper_bound)
-
+    lower_green = np.array([40, 50, 50])
+    upper_green = np.array([80, 255, 255])
+    mask = cv2.inRange(hsv, lower_green, upper_green)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     centro = None
@@ -39,4 +19,49 @@ def detectar_objeto(frame):
             centro = (cX, cY)
             cv2.circle(frame, centro, 5, (0, 0, 255), -1)
 
-    return centro, mask  # Retorna o centro de massa e a mask
+    return centro, mask
+
+# Função para criar trackbars (ajuste conforme necessário para sliders específicos)
+def create_trackbar(window_name):
+    cv2.createTrackbar("LowH", window_name, 40, 179, lambda x: None)
+    cv2.createTrackbar("HighH", window_name, 80, 179, lambda x: None)
+    cv2.createTrackbar("LowS", window_name, 50, 255, lambda x: None)
+    cv2.createTrackbar("HighS", window_name, 255, 255, lambda x: None)
+    cv2.createTrackbar("LowV", window_name, 50, 255, lambda x: None)
+    cv2.createTrackbar("HighV", window_name, 255, 255, lambda x: None)
+
+# Função para capturar o vídeo e processar o objeto em uma thread separada
+def capturar_video(centro_callback, video_running):
+    cap = cv2.VideoCapture(0)
+
+    # Inicializar janela de jogo e trackbars
+    window_name = "Imagem Original"
+    cv2.namedWindow(window_name)
+    create_trackbar(window_name)
+
+    while video_running.is_set():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Detectar o centro e a máscara
+        centro, mask = detectar_objeto(frame)
+
+        if centro is not None:
+            centro_callback(centro)
+
+        # Dar flip ao camera feed para dar match do movimento do jogador
+        frame = cv2.flip(frame, 1)
+        cv2.imshow(window_name, frame)
+
+        # Dar flip ao mask feed para dar match do movimento do jogador
+        mask = cv2.flip(mask, 1)
+        cv2.imshow("Mascara", mask)
+
+        # Controla para que a janela feche corretamente
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            video_running.clear()
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()

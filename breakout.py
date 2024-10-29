@@ -1,6 +1,5 @@
 import pygame
-import cv2
-from segmentation import detectar_objeto, create_trackbar  # Importando a função de segmentação
+from segmentation import capturar_video  # Importando a função de segmentação e captura
 import threading
 
 pygame.init()
@@ -33,51 +32,18 @@ game_over = 0
 
 # Variável para armazenar a posição do objeto detectado
 centro_objeto = None
-video_running = True  # Flag para controlar a thread de captura de vídeo
+video_running = threading.Event()  # Flag para controlar a thread de captura de vídeo
+video_running.set()  # Inicializa como ativo
+
+# Função callback para atualizar a posição do objeto
+def atualizar_centro(centro):
+    global centro_objeto
+    centro_objeto = centro
 
 #function for outputting text onto the screen
 def draw_text(text, font, text_col, x, y):
     img = font.render(text, True, text_col)
     screen.blit(img, (x, y))
-
-# Função para capturar o vídeo em uma thread separada
-def capturar_video():
-    global centro_objeto, video_running
-    cap = cv2.VideoCapture(0)
-
-    # Inicializar janela de jogo e trackbars
-    window_name = "Imagem Original"
-    cv2.namedWindow(window_name)
-    create_trackbar(window_name)
-
-    while video_running:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        # Detectar o centro e a máscara
-        centro, mask = detectar_objeto(frame)
-
-        if centro is not None:
-            centro_objeto = centro
-
-        # Dar flip ao camera feed para dar match do movimento do jogador
-        frame = cv2.flip(frame, 1)
-
-        cv2.imshow(window_name, frame)
-
-        # Dar flip ao mask feed para dar match do movimento do jogador
-        mask = cv2.flip(mask, 1)
-
-        cv2.imshow("Mascara", mask)  # Mascara segmentada
-
-        # Controla para que a janela feche corretamente
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            video_running = False
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
 
 # Classe wall para os blocos
 class wall():
@@ -119,7 +85,7 @@ class paddle():
     def __init__(self):
         self.reset()
 
-    # Função para mover a barra com base na posição x do objeto verde
+    # Função para mover a barra com base na posição x do objeto
     def move_to_position(self, x):
         # Inverter a direção do movimento usando screen_width
         inverted_x = screen_width - x
@@ -205,8 +171,8 @@ wall.create_wall()
 player_paddle = paddle()
 ball = game_ball(player_paddle.x + (player_paddle.width // 2), player_paddle.y - player_paddle.height)
 
-# Iniciar a captura de vídeo em uma thread separada
-thread_video = threading.Thread(target=capturar_video)
+# Iniciar a captura de vídeo em uma thread separada e passar a função de callback
+thread_video = threading.Thread(target=capturar_video, args=(atualizar_centro, video_running))
 thread_video.start()
 
 # Loop principal do jogo
@@ -236,7 +202,6 @@ while run:
             draw_text('CLICK ANYWHERE TO START', font, text_col, 100, screen_height // 2 + 100)
         elif game_over == 1:
             draw_text('YOU WON!', font, text_col, 240, screen_height // 2 + 50)
-            draw_text('CLICK ANYWHERE TO START', font, text_col, 100, screen_height // 2 + 100)
         elif game_over == -1:
             draw_text('YOU LOST!', font, text_col, 240, screen_height // 2 + 50)
             draw_text('CLICK ANYWHERE TO START', font, text_col, 100, screen_height // 2 + 100)
@@ -253,6 +218,6 @@ while run:
     pygame.display.update()
 
 # Finalizar a thread de captura de vídeo e fechar as janelas
-video_running = False
+video_running.clear()  # Define o evento como falso para encerrar a thread
 thread_video.join()
 pygame.quit()
