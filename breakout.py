@@ -1,7 +1,8 @@
 import pygame
 import cv2
-import segmentation  # Importando a função de segmentação
+import segmentation  # Importar funções de segmentação
 import threading
+import numpy as np
 
 pygame.init()
 
@@ -35,6 +36,30 @@ game_over = 0
 def draw_text(text, font, text_col, x, y):
     img = font.render(text, True, text_col)
     screen.blit(img, (x, y))
+
+def readme_window(window_name="README", width=600, height=300, font_scale=0.6, color=(255, 255, 255), thickness=1):
+    # Create a blank image (black background)
+    image = np.zeros((height,width, 3), dtype=np.uint8)
+
+    # Set the font for the text
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    text1 = "Cor por defeito esta definida como um tom de verde."
+    text2 = "Alterar cor clicando num objeto no frame da camera"
+    text3 = "ou utilizando as trackbars."
+
+    text_x = 25
+    text_y1 = 100
+    text_y2 = 150
+    text_y3 = 200
+
+    # Put the text on the image
+    cv2.putText(image, text1, (text_x, text_y1), font, font_scale, color, thickness, lineType=cv2.LINE_AA)
+    cv2.putText(image, text2, (text_x, text_y2), font, font_scale, color, thickness, lineType=cv2.LINE_AA)
+    cv2.putText(image, text3, (text_x, text_y3), font, font_scale, color, thickness, lineType=cv2.LINE_AA)
+
+    # Display the image in a new window
+    cv2.imshow(window_name, image)
 
 # Classe wall para os blocos
 class wall():
@@ -165,6 +190,7 @@ ball = game_ball(player_paddle.x + (player_paddle.width // 2), player_paddle.y -
 # Iniciar a captura de vídeo em uma thread separada
 thread_video = threading.Thread(target=segmentation.capturar_video)
 thread_video.start()
+readme_window()
 
 # Loop principal do jogo
 run = True
