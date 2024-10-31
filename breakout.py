@@ -1,5 +1,6 @@
 import pygame
-from segmentation import capturar_video  # Importando a função de segmentação e captura
+import cv2
+import segmentation  # Importando a função de segmentação
 import threading
 
 pygame.init()
@@ -29,16 +30,6 @@ clock = pygame.time.Clock()
 fps = 60
 live_ball = False
 game_over = 0
-
-# Variável para armazenar a posição do objeto detectado
-centro_objeto = None
-video_running = threading.Event()  # Flag para controlar a thread de captura de vídeo
-video_running.set()  # Inicializa como ativo
-
-# Função callback para atualizar a posição do objeto
-def atualizar_centro(centro):
-    global centro_objeto
-    centro_objeto = centro
 
 #function for outputting text onto the screen
 def draw_text(text, font, text_col, x, y):
@@ -85,7 +76,7 @@ class paddle():
     def __init__(self):
         self.reset()
 
-    # Função para mover a barra com base na posição x do objeto
+    # Função para mover a barra com base na posição x do objeto verde
     def move_to_position(self, x):
         # Inverter a direção do movimento usando screen_width
         inverted_x = screen_width - x
@@ -171,8 +162,8 @@ wall.create_wall()
 player_paddle = paddle()
 ball = game_ball(player_paddle.x + (player_paddle.width // 2), player_paddle.y - player_paddle.height)
 
-# Iniciar a captura de vídeo em uma thread separada e passar a função de callback
-thread_video = threading.Thread(target=capturar_video, args=(atualizar_centro, video_running))
+# Iniciar a captura de vídeo em uma thread separada
+thread_video = threading.Thread(target=segmentation.capturar_video)
 thread_video.start()
 
 # Loop principal do jogo
@@ -182,8 +173,8 @@ while run:
     screen.fill(bg)
 
     # Usar a posição detectada do objeto verde para mover a barra
-    if centro_objeto is not None:
-        player_paddle.move_to_position(centro_objeto[0])
+    if segmentation.centro_objeto is not None:
+        player_paddle.move_to_position(segmentation.centro_objeto[0])
 
     # Desenhar todos os elementos do jogo
     wall.draw_wall()
@@ -202,6 +193,7 @@ while run:
             draw_text('CLICK ANYWHERE TO START', font, text_col, 100, screen_height // 2 + 100)
         elif game_over == 1:
             draw_text('YOU WON!', font, text_col, 240, screen_height // 2 + 50)
+            draw_text('CLICK ANYWHERE TO START', font, text_col, 100, screen_height // 2 + 100)
         elif game_over == -1:
             draw_text('YOU LOST!', font, text_col, 240, screen_height // 2 + 50)
             draw_text('CLICK ANYWHERE TO START', font, text_col, 100, screen_height // 2 + 100)
@@ -218,6 +210,6 @@ while run:
     pygame.display.update()
 
 # Finalizar a thread de captura de vídeo e fechar as janelas
-video_running.clear()  # Define o evento como falso para encerrar a thread
+video_running = False
 thread_video.join()
 pygame.quit()
