@@ -1,8 +1,6 @@
 import pygame
-from pygame.locals import *
 import cv2
-from segmentation import detectar_objeto_verde  # Importando a função de segmentação
-import numpy as np
+import segmentation  # Importando a função de segmentação
 import threading
 
 pygame.init()
@@ -33,39 +31,10 @@ fps = 60
 live_ball = False
 game_over = 0
 
-# Variável para armazenar a posição do objeto detectado
-centro_objeto = None
-video_running = True  # Flag para controlar a thread de captura de vídeo
-
 #function for outputting text onto the screen
 def draw_text(text, font, text_col, x, y):
     img = font.render(text, True, text_col)
     screen.blit(img, (x, y))
-
-# Função para capturar o vídeo em uma thread separada
-def capturar_video():
-    global centro_objeto, video_running
-    cap = cv2.VideoCapture(0)
-    while video_running:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        # Detectar o centro e a máscara
-        centro, mask = detectar_objeto_verde(frame)
-        if centro is not None:
-            centro_objeto = centro
-
-        # Exibir as janelas de câmera e máscara segmentada
-        cv2.imshow("Imagem Original", frame)  # Imagem da câmera
-        cv2.imshow("Mascara Verde", mask)  # Mascara segmentada
-
-        # Controla para que a janela feche corretamente
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            video_running = False
-            break
-    cap.release()
-    cv2.destroyAllWindows()
 
 # Classe wall para os blocos
 class wall():
@@ -194,7 +163,7 @@ player_paddle = paddle()
 ball = game_ball(player_paddle.x + (player_paddle.width // 2), player_paddle.y - player_paddle.height)
 
 # Iniciar a captura de vídeo em uma thread separada
-thread_video = threading.Thread(target=capturar_video)
+thread_video = threading.Thread(target=segmentation.capturar_video)
 thread_video.start()
 
 # Loop principal do jogo
@@ -204,8 +173,8 @@ while run:
     screen.fill(bg)
 
     # Usar a posição detectada do objeto verde para mover a barra
-    if centro_objeto is not None:
-        player_paddle.move_to_position(centro_objeto[0])
+    if segmentation.centro_objeto is not None:
+        player_paddle.move_to_position(segmentation.centro_objeto[0])
 
     # Desenhar todos os elementos do jogo
     wall.draw_wall()
